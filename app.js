@@ -44,14 +44,6 @@ async function generatePushUpdates() {
     }`;
     let response = await query(q);
     for (let e of response.results.bindings) {
-        /*
-         * TODO: for each of the results do the following
-         *  - check for a match with key
-         *  - then generate push updates for each of the tab id's
-         *  - delete after consumption
-         */
-        console.log(JSON.stringify(e))
-
         let path = e.path.value;
         let method = e.method.value;
         let urlQuery = e.query.value;
@@ -59,10 +51,6 @@ async function generatePushUpdates() {
         let muAuthUsedGroups = e.muAuthUsedGroups.value;
 
         let key = getKeyForEvent(path, method, urlQuery, muAuthAllowedGroups, muAuthUsedGroups)
-        console.log(key)
-
-        console.log(cacheSubscriptions[key])
-        console.log(cacheSubscriptions)
         let tabIdList = cacheSubscriptions[key] || []
         let now = new Date()
         let dateISOString = now.toISOString()
@@ -124,7 +112,6 @@ function getKeyForEvent(path, method, urlQuery, muAuthAllowedGroups, muAuthUsedG
 
 // Subscribing to a cache-clear given method, path and query
 app.post('/cache-clear/', async function(req, res) {
-    console.log(req.body)
     let id = req.get("MU-TAB-ID");
     let path = req.body.path
     let method = req.body.method
@@ -134,15 +121,11 @@ app.post('/cache-clear/', async function(req, res) {
     if (cacheSubscriptions[key] === undefined) {
         cacheSubscriptions[key] = new Set()
     }
-    cacheSubscriptions[key].add(id)
-    console.log(key)
-    console.log(cacheSubscriptions[key])
 
     res.status(204).send()
 })
 // Cancel subscription
 app.delete('/cache-clear/', async function(req, res) {
-    console.log(req.body)
     let id = req.get("MU-TAB-ID");
     let path = req.body.path
     let method = req.body.method
