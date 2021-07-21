@@ -121,7 +121,7 @@ app.post('/cache-clear/', async function(req, res) {
     if (cacheSubscriptions[key] === undefined) {
         cacheSubscriptions[key] = new Set()
     }
-
+    cacheSubscriptions[key].add(id)
     res.status(204).send()
 })
 // Cancel subscription
@@ -133,9 +133,7 @@ app.delete('/cache-clear/', async function(req, res) {
     let key = getKeyForEvent(path, method, urlQuery, "", "")
 
     if (cacheSubscriptions[key] !== undefined) {
-        console.log(cacheSubscriptions[key])
         cacheSubscriptions[key].delete(id)
-        console.log(cacheSubscriptions[key])
     }
     res.status(204).send()
 })
