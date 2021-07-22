@@ -17,15 +17,12 @@ function sleep(ms) {
 }
 app.use(bodyParser.json());
 
-let cacheClearsReady = 0;
-
-// TODO: keep map of key (url, method etc... match) -> list of tab id's
-
 // Map from key (format from getKeyForEvent ) to list of tabId's which are subscribed to that key
 let cacheSubscriptions = {}
 
 
 async function generatePushUpdates() {
+    // Get all cache-clear events that are in the database
     let q = `
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
@@ -43,6 +40,7 @@ async function generatePushUpdates() {
       }
     }`;
     let response = await query(q);
+    // For each cache clear event: generate a push update for each tab-id that is subscribed to that key
     for (let e of response.results.bindings) {
         let path = e.path.value;
         let method = e.method.value;
@@ -50,14 +48,18 @@ async function generatePushUpdates() {
         let muAuthAllowedGroups = e.muAuthAllowedGroups.value;
         let muAuthUsedGroups = e.muAuthUsedGroups.value;
 
+        // Generate the key for the cache-clear event given all it's details
         let key = getKeyForEvent(path, method, urlQuery, muAuthAllowedGroups, muAuthUsedGroups)
+        // Get the list of tab id's that are subscribed
         let tabIdList = cacheSubscriptions[key] || []
         let now = new Date()
         let dateISOString = now.toISOString()
+        // Set the type and realm for the cache-clear
         let type = "http://cache-clear-event"
         let realm = "http://cache"
+        // Set the value to be an object containing the path, method and query of the cache-clear event
+        let value = sparqlEscape(JSON.stringify({path: path, method: method, query: urlQuery}), 'string')
         for (let id of tabIdList) {
-            let value = sparqlEscape(JSON.stringify({path: path, method: method, query: urlQuery}), 'string')
             let uuidValue = uuid()
             let q = `
             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -106,12 +108,14 @@ async function generatePushUpdates() {
     }
 }
 
+// Function to generate a string key for a cache-clear event
 function getKeyForEvent(path, method, urlQuery, muAuthAllowedGroups, muAuthUsedGroups) {
     return `${method} ${path}?${urlQuery}`
 }
 
 // Subscribing to a cache-clear given method, path and query
 app.post('/cache-clear/', async function(req, res) {
+    // Subscribe the given id to a certain key
     let id = req.get("MU-TAB-ID");
     let path = req.body.path
     let method = req.body.method
@@ -126,6 +130,7 @@ app.post('/cache-clear/', async function(req, res) {
 })
 // Cancel subscription
 app.delete('/cache-clear/', async function(req, res) {
+    // Unsubscribe the given id to a certain key
     let id = req.get("MU-TAB-ID");
     let path = req.body.path
     let method = req.body.method
@@ -138,7 +143,7 @@ app.delete('/cache-clear/', async function(req, res) {
     res.status(204).send()
 })
 
-
+// When delta messages are received in means there're new cache-clear events in the database
 app.post('/.mu/delta', async function(req, res) {
     console.log("Got delta")
     res.status(204).send()

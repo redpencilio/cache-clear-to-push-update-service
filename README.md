@@ -29,3 +29,5 @@ This will unsubscribe the currect tab (defined my MU-TAB-ID) to a certain resour
 
 
 The format of a cache-clear is defined in [this file](./model.md)
+
+This service needs delta messages from the [delta notifier](https://github.com/mu-semtech/delta-notifier) in the `v0.0.1` [format](https://github.com/mu-semtech/delta-notifier#delta-formats), with an object filter for mucache:CacheClear.
