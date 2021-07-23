@@ -21,27 +21,28 @@ app.use(bodyParser.json());
 let cacheSubscriptions = {}
 
 
-async function generatePushUpdates() {
+async function generatePushUpdates(events) {
     // Get all cache-clear events that are in the database
-    let q = `
-    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-    PREFIX mucache: <http://mu.semte.ch/vocabularies/cache/>
-    PREFIX dc:  <http://purl.org/dc/terms/>
-    SELECT ?event ?path ?method ?query ?muAuthAllowedGroups ?muAuthUsedGroups
-    WHERE {
-      GRAPH <http://mu.semte.ch/application> {
-        ?event a    mucache:CacheClear;
-                    mucache:path ?path;
-                    mucache:method ?method;
-                    mucache:query ?query;
-                    mucache:muAuthAllowedGroups ?muAuthAllowedGroups;
-                    mucache:muAuthUsedGroups ?muAuthUsedGroups.
-      }
-    }`;
-    let response = await query(q);
+    // let q = `
+    // PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    // PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+    // PREFIX mucache: <http://mu.semte.ch/vocabularies/cache/>
+    // PREFIX dc:  <http://purl.org/dc/terms/>
+    // SELECT ?event ?path ?method ?query ?muAuthAllowedGroups ?muAuthUsedGroups
+    // WHERE {
+    //   GRAPH <http://mu.semte.ch/application> {
+    //     ?event a    mucache:CacheClear;
+    //                 mucache:path ?path;
+    //                 mucache:method ?method;
+    //                 mucache:query ?query;
+    //                 mucache:muAuthAllowedGroups ?muAuthAllowedGroups;
+    //                 mucache:muAuthUsedGroups ?muAuthUsedGroups.
+    //   }
+    // }`;
+    // let response = await query(q);
+
     // For each cache clear event: generate a push update for each tab-id that is subscribed to that key
-    for (let e of response.results.bindings) {
+    for (let e of events) {
         let path = e.path.value;
         let method = e.method.value;
         let urlQuery = e.query.value;
@@ -58,7 +59,11 @@ async function generatePushUpdates() {
         let type = "http://cache-clear-event"
         let realm = "http://cache"
         // Set the value to be an object containing the path, method and query of the cache-clear event
-        let value = sparqlEscape(JSON.stringify({path: path, method: method, query: urlQuery}), 'string')
+        let value = sparqlEscape(JSON.stringify({
+            path: path,
+            method: method,
+            query: urlQuery
+        }), 'string')
         for (let id of tabIdList) {
             let uuidValue = uuid()
             let q = `
@@ -89,7 +94,7 @@ async function generatePushUpdates() {
         }
         let resourceUrl = e.event.value;
         if (deleteAfterConsumption) {
-            q = `
+            let q = `
             WITH <http://mu.semte.ch/application>
             DELETE
                 {?s ?p ?o}
@@ -146,6 +151,23 @@ app.delete('/cache-clear/', async function(req, res) {
 // When delta messages are received in means there're new cache-clear events in the database
 app.post('/.mu/delta', async function(req, res) {
     console.log("Got delta")
+    let events = new Set()
+    for (let delta of req.body) {
+        let tempEvent = {}
+        let subject = delta.inserts[0].subject.value
+        for (let ev of delta.inserts) {
+            tempEvent[ev.predicate.value] = ev.object
+        }
+        events.add({
+            "event": subject,
+            "path": tempEvent["http://mu.semte.ch/vocabularies/cache/path"],
+            "method": tempEvent["http://mu.semte.ch/vocabularies/cache/method"],
+            "query": tempEvent["http://mu.semte.ch/vocabularies/cache/query"],
+            "muAuthUsedGroups": tempEvent["http://mu.semte.ch/vocabularies/cache/muAuthUsedGroups"],
+            "muAuthAllowedGroups": tempEvent["http://mu.semte.ch/vocabularies/cache/muAuthAllowedGroups"]
+        })
+    }
+    console.log(events)
     res.status(204).send()
-    generatePushUpdates()
+    generatePushUpdates(events)
 })
