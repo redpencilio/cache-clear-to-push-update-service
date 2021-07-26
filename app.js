@@ -18,25 +18,6 @@ let cacheSubscriptions = {}
 
 
 async function generatePushUpdates(events) {
-    // Get all cache-clear events that are in the database
-    // let q = `
-    // PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    // PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-    // PREFIX mucache: <http://mu.semte.ch/vocabularies/cache/>
-    // PREFIX dc:  <http://purl.org/dc/terms/>
-    // SELECT ?event ?path ?method ?query ?muAuthAllowedGroups ?muAuthUsedGroups
-    // WHERE {
-    //   GRAPH <http://mu.semte.ch/application> {
-    //     ?event a    mucache:CacheClear;
-    //                 mucache:path ?path;
-    //                 mucache:method ?method;
-    //                 mucache:query ?query;
-    //                 mucache:muAuthAllowedGroups ?muAuthAllowedGroups;
-    //                 mucache:muAuthUsedGroups ?muAuthUsedGroups.
-    //   }
-    // }`;
-    // let response = await query(q);
-
     // For each cache clear event: generate a push update for each tab-id that is subscribed to that key
     for (let e of events) {
         let path = e.path.value;
