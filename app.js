@@ -7,10 +7,6 @@ import {
 import bodyParser from "body-parser";
 
 let deleteAfterConsumption = process.env.PUSH_UPDATES_DELETE_AFTER_CONSUMPTION;
-let sort = process.env.PUSH_UPDATES_SORTING_METHOD || "" // must be "ASC" or "DESC" all other values are interpreted as falsy (no sorting)
-let refreshTimeout = process.env.PUSH_UPDATES_REFRESH_TIMEOUT || 10;
-let maxTimeout = process.env.PUSH_UPDATES_MAX_TIMEOUT || 80; // in seconds
-let maxRetries = maxTimeout * 1000 / refreshTimeout - 10;
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
